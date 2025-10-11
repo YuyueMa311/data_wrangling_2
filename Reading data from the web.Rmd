@@ -3,3 +3,200 @@ title: "Reading data from the web"
 output: github_document
 ---
 
+```{r}
+library(tidyverse)
+library(rvest)
+library(httr)
+```
+
+
+## Extracting tables
+
+Load the data from web
+```{r}
+url = "http://samhda.s3-us-gov-west-1.amazonaws.com/s3fs-public/field-uploads/2k15StateFiles/NSDUHsaeShortTermCHG2015.htm"
+drug_use_html = read_html(url)
+
+drug_use_html
+```
+
+Extract tables from HTML
+```{r}
+drug_use_html |>
+  html_table()
+```
+This has extracted all of the tables on the original page; that’s why we have a list with 15 elements.
+
+Get the contents from the first list element.
+```{r}
+table_marj = 
+  drug_use_html |> 
+  html_table() |> 
+  first() 
+```
+
+The “note” at the bottom of the table appears in every column in the first row. 
+We need to remove that…
+```{r}
+table_marj = 
+  drug_use_html |> 
+  html_table() |> 
+  first() |>
+  slice(-1) 
+
+table_marj
+```
+
+Learning Assignment: Create a data frame that contains the cost of living table for New York from web
+```{r}
+nyc_cost = 
+  read_html("https://www.bestplaces.net/cost_of_living/city/new_york/new_york") |>
+  html_table(header = TRUE) |>
+  first()
+```
+
+
+## CSS Selectors
+
+
+Scrape the data about the Star Wars Movies from the IMDB page. First, need to get the HTML.
+```{r}
+swm_html = 
+  read_html("https://www.imdb.com/list/ls070150896/")
+```
+The information isn’t stored in a handy table, so we need to isolate the CSS selector for elements we care about.
+
+Use the CSS selector in `html_elements()` to extract the relevant HTML code, and convert it to text. 
+Then combine these into a data frame.
+```{r}
+title_vec = 
+  swm_html |>
+  html_elements(".ipc-title-link-wrapper .ipc-title__text") |>
+  html_text()
+
+metascore_vec = 
+  swm_html |>
+  html_elements(".metacritic-score-box") |>
+  html_text()
+
+runtime_vec = 
+  swm_html |>
+  html_elements(".dli-title-metadata-item:nth-child(2)") |>
+  html_text()
+
+swm_df = 
+  tibble(
+    title = title_vec,
+    score = metascore_vec,
+    runtime = runtime_vec)
+```
+
+Learning Assignment:
+```{r}
+url = "http://books.toscrape.com"
+
+books_html = read_html(url)
+
+books_titles = 
+  books_html |>
+  html_elements("h3") |>
+  html_text2()
+
+books_stars = 
+  books_html |>
+  html_elements(".star-rating") |>
+  html_attr("class")
+
+books_price = 
+  books_html |>
+  html_elements(".price_color") |>
+  html_text()
+
+books = tibble(
+  title = books_titles,
+  stars = books_stars,
+  price = books_price
+)
+```
+
+
+## Using an API
+
+Import this dataset as a CSV and parse it
+```{r}
+nyc_water = 
+  GET("https://data.cityofnewyork.us/resource/ia2d-e54m.csv") |> 
+  content("parsed")
+```
+
+Import this dataset as a JSON file. 
+```{r}
+nyc_water = 
+  GET("https://data.cityofnewyork.us/resource/ia2d-e54m.json") |> 
+  content("text") |>
+  jsonlite::fromJSON() |>
+  as_tibble()
+```
+
+Import data from BRFSS. This is importable via the API as a CSV (JSON, in this example, is more complicated).
+```{r}
+brfss_smart2010 = 
+  GET("https://chronicdata.cdc.gov/resource/acme-vg9e.csv",
+      query = list("$limit" = 5000)) |> 
+  content("parsed")
+```
+By default, the CDC API limits data to the first 1000 rows. Here we can increased that by changing an element of the API query: looked around the website describing the API to find the name of the argument, and then used the appropriate syntax for `GET`. 
+To get the full data, we could increase this to get all the data at once or to try iterating over chunks of a few thousand rows.
+
+
+Examples above are straightforward API.
+Here are some complicated one with pokemon
+```{r}
+poke = 
+  GET("http://pokeapi.co/api/v2/pokemon/1") |>
+  content()
+
+poke[["name"]]
+```
+
+```{r}
+poke[["height"]]
+```
+
+```{r}
+poke[["abilities"]]
+```
+To build a Pokemon dataset for analysis, first distill the data returned from the API into a useful format; then iterate across all pokemon; and combine the results.
+
+**APIs are more helpful when the full dataset is complex and you only need pieces, or when the data are updated regularly.**
+
+## Be reasonable
+When you’re reading data from the web, remember you’re accessing resources on someone else’s server – either by reading HTML or by accessing data via an API. In some cases, those who make data public will take steps to limit bandwidth devoted to a small number of users. Amazon and IMDB, for example, probably won’t notice if you scrape small amounts of data but would notice if you tried to read data from thousands of pages every time you knitted a document.
+
+Similarly, API developers can (and will) limit the number of database entries that can be accessed in a single request. In those cases you’d have to take some steps to iterate over “pages” and combine the results; as an example, our code for the NYC Restaurant Inspections does this. In some cases, API developers protect themselves from unreasonable use by requiring users to be authenticated – it’s still possible to use httr in these cases, but we won’t get into it.
+
+
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
