@@ -58,7 +58,6 @@ nyc_cost =
 
 ## CSS Selectors
 
-
 Scrape the data about the Star Wars Movies from the IMDB page. First, need to get the HTML.
 ```{r}
 swm_html = 
@@ -71,7 +70,7 @@ Then combine these into a data frame.
 ```{r}
 title_vec = 
   swm_html |>
-  html_elements(".ipc-title-link-wrapper .ipc-title__text") |>
+  html_elements(".ipc-title-link-wrapper .ipc-title__text--reduced") |> # using SelectorGadge to pull out just the information you need on the web
   html_text()
 
 metascore_vec = 
@@ -139,10 +138,10 @@ nyc_water =
 ```
 
 Import data from BRFSS. This is importable via the API as a CSV (JSON, in this example, is more complicated).
-```{r}
+```{r, eval=FALSE}
 brfss_smart2010 = 
   GET("https://chronicdata.cdc.gov/resource/acme-vg9e.csv",
-      query = list("$limit" = 5000)) |> 
+      query = list("$limit" = 5000)) |> # sometimes need to sigh up a token to access data
   content("parsed")
 ```
 By default, the CDC API limits data to the first 1000 rows. Here we can increased that by changing an element of the API query: looked around the website describing the API to find the name of the argument, and then used the appropriate syntax for `GET`. 
@@ -150,6 +149,7 @@ To get the full data, we could increase this to get all the data at once or to t
 
 
 Examples above are straightforward API.
+
 Here are some complicated one with pokemon
 ```{r}
 poke = 
@@ -176,27 +176,3 @@ When you’re reading data from the web, remember you’re accessing resources o
 Similarly, API developers can (and will) limit the number of database entries that can be accessed in a single request. In those cases you’d have to take some steps to iterate over “pages” and combine the results; as an example, our code for the NYC Restaurant Inspections does this. In some cases, API developers protect themselves from unreasonable use by requiring users to be authenticated – it’s still possible to use httr in these cases, but we won’t get into it.
 
 
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
-
-```{r}
-
-```
