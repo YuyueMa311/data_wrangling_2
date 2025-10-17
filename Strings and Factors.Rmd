@@ -5,24 +5,30 @@ output: github_document
 
 ```{r}
 library(rvest)
+library(tidyverse)
 library(p8105.datasets)
-
 ```
 
 
 ## Strings and regex
 
-
+Define string vector and filter specific value based on string variable (case-sentitive)
 ```{r}
 string_vec = c("my", "name", "is", "jeff")
 
 str_detect(string_vec, "jeff")
+str_detect(string_vec, "e") 
 ```
 
+Replace string value and white space
 ```{r}
 str_replace(string_vec, "jeff", "Jeff")
+str_replace(string_vec, "e", "")
+
+str_remove(string_vec, "m")
 ```
 
+Patterns matter when matching 
 ```{r}
 string_vec = c(
   "i think we all rule for participating",
@@ -31,13 +37,16 @@ string_vec = c(
   "it will be fun, i think"
   )
 
-str_detect(string_vec, "^i think")
-```
+str_detect(string_vec, "i think")
+str_detect(string_vec, "^i think")  # match with start with ""
+str_detect(string_vec, "i think$")  # match with end with ""
+``` 
 
 ```{r}
 str_detect(string_vec, "i think$")
 ```
 
+`[]` anything inside counts for matching, and anything outside doesn't count
 ```{r}
 string_vec = c(
   "Time for a Pumpkin Spice Latte!",
@@ -49,6 +58,7 @@ string_vec = c(
 str_detect(string_vec,"[Pp]umpkin")
 ```
 
+More complicated cases: number follows letter
 ```{r}
 string_vec = c(
   '7th inning stretch',
@@ -57,7 +67,7 @@ string_vec = c(
   '3AM - cant sleep :('
   )
 
-str_detect(string_vec, "^[0-9][a-zA-Z]")
+str_detect(string_vec, "^[0-9][a-zA-Z]") # detect any number between 0-9, A-Z, and a-z
 ```
 
 ```{r}
@@ -68,10 +78,12 @@ string_vec = c(
   'NetBios: scanning ip 203.167.114.66'
   )
 
-str_detect(string_vec, "7.11")
-
+str_detect(string_vec, "7.11") # . is a placeholder for anything between 7 and 11
+str_detect(string_vec, "7\\.11") # indicates . is a special character trying to detect
 ```
 
+Some characters are “special”. These include `[` and `]`, `(` and `)`, and .. If you want to search for these, you have to indicate they’re special using `\`. 
+Unfortunately, `\` is also special, so things get weird.
 ```{r}
 string_vec = c(
   'The CI is [2, 5]',
@@ -86,18 +98,25 @@ str_detect(string_vec, "\\[")
 
 ## Thoughts on factors
 
-
+Default ordering is alphabatecial
 ```{r}
 vec_sex = factor(c("male", "male", "female", "female"))
 vec_sex
 ```
 
+Force it to be numeric variable
 ```{r}
 as.numeric(vec_sex)
 ```
 
 ```{r}
-vec_sex = fct_relevel(vec_sex, "male")
+vec_sex = fct_relevel(vec_sex, "male") 
+vec_sex
+```
+
+Reorder
+```{r}
+vec_sex = fct_inorder(vec_sex)
 vec_sex
 ```
 
@@ -108,7 +127,7 @@ as.numeric(vec_sex)
 
 ## NSDUH
 
-
+Import from web 
 ```{r}
 nsduh_url = "http://samhda.s3-us-gov-west-1.amazonaws.com/s3fs-public/field-uploads/2k15StateFiles/NSDUHsaeShortTermCHG2015.htm"
 
@@ -119,6 +138,7 @@ table_marj =
   slice(-1)
 ```
 
+Tidy the dataset
 ```{r}
 data_marj = 
   table_marj |>
@@ -127,18 +147,19 @@ data_marj =
     -State,
     names_to = "age_year", 
     values_to = "percent") |>
-  separate(age_year, into = c("age", "year"), sep = "\\(") |>
+  separate(age_year, into = c("age", "year"), sep = "\\(") |> # what to look for when separate: (
   mutate(
-    year = str_replace(year, "\\)", ""),
-    percent = str_replace(percent, "[a-c]$", ""),
+    year = str_replace(year, "\\)", ""), # remove also work, "\\)"
+    percent = str_replace(percent, "[a-c]$", ""), # $ specifies only a-c letter
     percent = as.numeric(percent)) |>
-  filter(!(State %in% c("Total U.S.", "Northeast", "Midwest", "South", "West")))
+  filter(!(State %in% c("Total U.S.", "Northeast", "Midwest", "South", "West"))) # !(State%in% c()) to delete those only
 ```
 
+Make a quick plot
 ```{r}
 data_marj |>
   filter(age == "12-17") |> 
-  mutate(State = fct_reorder(State, percent)) |> 
+  mutate(State = fct_reorder(State, percent)) |> # mutate order just for plot, not for the whole dataset, so keep it here instead in the clean step.
   ggplot(aes(x = State, y = percent, color = year)) + 
     geom_point() + 
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
@@ -163,13 +184,17 @@ rest_inspec |>
   pivot_wider(names_from = grade, values_from = n)
 ```
 
+Only Include A/B/C grade
 ```{r}
 rest_inspec =
   rest_inspec |>
   filter(grade %in% c("A", "B", "C"), borough != "Missing") |> 
   mutate(borough = str_to_title(borough))
+
+rest_inspec
 ```
 
+Look for Pizza place
 ```{r}
 rest_inspec |> 
   filter(str_detect(dba, "Pizza")) |> 
@@ -180,12 +205,13 @@ rest_inspec |>
 
 ```{r}
 rest_inspec |> 
-  filter(str_detect(dba, "[Pp][Ii][Zz][Zz][Aa]")) |> 
+  filter(str_detect(dba, "[Pp][Ii][Zz][Zz][Aa]")) |> #any possible combination for those letters in the []
   group_by(borough, grade) |> 
   summarize(n = n()) |> 
   pivot_wider(names_from = grade, values_from = n)
 ```
 
+Make a plot instead
 ```{r}
 rest_inspec |> 
   filter(str_detect(dba, "[Pp][Ii][Zz][Zz][Aa]")) |>
@@ -196,7 +222,7 @@ rest_inspec |>
 ```{r}
 rest_inspec |> 
   filter(str_detect(dba, "[Pp][Ii][Zz][Zz][Aa]")) |>
-  mutate(borough = fct_infreq(borough)) |>
+  mutate(borough = fct_infreq(borough)) |> # order the bars according to frequency
   ggplot(aes(x = borough, fill = grade)) + 
   geom_bar() 
 ```
@@ -205,12 +231,13 @@ rest_inspec |>
 rest_inspec |> 
   filter(str_detect(dba, "[Pp][Ii][Zz][Zz][Aa]")) |>
   mutate(
-    borough = fct_infreq(borough),
-    borough = str_replace(borough, "Manhattan", "The City")) |>
+    borough = fct_infreq(borough), #convert string variables to factor
+    borough = str_replace(borough, "Manhattan", "The City")) |> # replace names, and convert back to strings, then the order change to alphabetical
   ggplot(aes(x = borough, fill = grade)) + 
   geom_bar() 
 ```
 
+`replace` to rename.
 ```{r}
 rest_inspec |> 
   filter(str_detect(dba, "[Pp][Ii][Zz][Zz][Aa]")) |>
@@ -220,7 +247,9 @@ rest_inspec |>
   ggplot(aes(x = borough, fill = grade)) + 
   geom_bar()
 ```
-
+Not work at all. Factors have very specific values, trying to use a value that is not an existing factor level won’t work.
+ 
+Use `fct_recode` to directly rename factor levels
 ```{r}
 rest_inspec |> 
   filter(str_detect(dba, regex("pizza", ignore_case = TRUE))) |>
@@ -240,6 +269,7 @@ library(p8105.datasets)
 data("weather_df")
 ```
 
+Reordered name “by hand” using `fct_relevel`:
 ```{r}
 weather_df |>
   mutate(name = forcats::fct_relevel(name, c("Molokai_HI", "CentralPark_NY", "Waterhole_WA"))) |> 
@@ -248,6 +278,7 @@ weather_df |>
   theme(legend.position = "bottom")
 ```
 
+  Reorder name according to tmax values in each name using `fct_reorder`:
 ```{r}
 weather_df |>
   mutate(name = forcats::fct_reorder(name, tmax)) |> 
@@ -255,12 +286,13 @@ weather_df |>
   geom_violin(aes(fill = name), color = "blue", alpha = .5) + 
   theme(legend.position = "bottom")
 ```
-
+Ordering of factor variables play an important role for linear regression,
+the ordering determines the “reference” category
 ```{r}
 weather_df |>
   lm(tmax ~ name, data = _)
 ```
-
+Change the reference group by `fct_relevel` for regression
 ```{r}
 weather_df |>
   mutate(name = forcats::fct_relevel(name, c("Molokai_HI", "CentralPark_NY", "Waterhole_WA"))) |> 
